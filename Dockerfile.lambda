@@ -1,0 +1,6 @@
+# syntax=docker/dockerfile:1
+FROM public.ecr.aws/lambda/provided:al2023
+ARG TARGET=aarch64-unknown-linux-musl
+COPY target/${TARGET}/release/bootstrap ${LAMBDA_RUNTIME_DIR}/bootstrap
+RUN chmod +x ${LAMBDA_RUNTIME_DIR}/bootstrap
+ENTRYPOINT ["/lambda-entrypoint.sh"]

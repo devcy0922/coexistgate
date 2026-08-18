@@ -1,0 +1,6 @@
+aws_region                 = "us-east-1"
+name                       = "coexistgate"
+github_app_id              = "123456"
+github_app_private_key_path = "./github-app.pem"
+image_uri                  = "123456789012.dkr.ecr.us-east-1.amazonaws.com/coexistgate:0.1.0"
+lambda_arch                = "arm64"
