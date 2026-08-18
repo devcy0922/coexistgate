@@ -100,10 +100,7 @@ fn find_policy_path(tree: &FileTree) -> Option<String> {
 }
 
 pub fn gate_decision(findings: &[crate::Finding], fail_on: &[Severity]) -> GateDecision {
-    let blocking = findings
-        .iter()
-        .any(|f| fail_on.iter().any(|s| f.severity == *s));
-    if blocking {
+    if findings.iter().any(|f| f.severity.blocks_gate(fail_on)) {
         GateDecision::Fail
     } else {
         GateDecision::Pass
@@ -186,6 +183,38 @@ gate:
                 assert_ne!(f.release_impact, Impact::Safe);
             }
         }
+        let high_only = analyze(AnalysisRequest {
+            previous: tree(&[
+                (
+                    "src/user_repository.ts",
+                    "export const q = `SELECT users.email FROM users`;\n",
+                ),
+                (
+                    "deploy/deployment.yaml",
+                    "kind: Deployment\nspec:\n  replicas: 3\n  strategy:\n    type: RollingUpdate\n",
+                ),
+                (".coexistgate.yml", POLICY),
+            ]),
+            candidate: tree(&[
+                (
+                    "src/user_repository.ts",
+                    "export const q = `SELECT users.email_address FROM users`;\n",
+                ),
+                (
+                    "migrations/002_email.sql",
+                    "ALTER TABLE users RENAME COLUMN email TO email_address;\n",
+                ),
+                (
+                    "deploy/deployment.yaml",
+                    "kind: Deployment\nspec:\n  replicas: 3\n  strategy:\n    type: RollingUpdate\n",
+                ),
+                (".coexistgate.yml", POLICY),
+            ]),
+            fail_on: Some(vec![Severity::High]),
+            policy: None,
+        })
+        .unwrap();
+        assert_eq!(high_only.gate, GateDecision::Fail);
     }
 
     #[test]
