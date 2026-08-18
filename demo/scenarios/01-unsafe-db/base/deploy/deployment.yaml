@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+  template:
+    spec:
+      containers:
+        - name: shop
+          image: shop:candidate
+          env:
+            - name: REDIS_URL
+              value: redis://cache:6379
+
+          resources:
+            limits:
+              memory: 512Mi
+              cpu: "500m"

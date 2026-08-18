@@ -1,0 +1,13 @@
+version: 1
+release:
+  strategy: rolling
+rollback:
+  required: true
+compatibility:
+  require_backward_compatible: true
+availability:
+  minimum_replicas: 2
+gate:
+  fail_on:
+    - critical
+    - high

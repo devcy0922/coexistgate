@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CoexistGate — Can this change be safely released?</title>
+  <meta name="description" content="Release safety checks your code review doesn't cover." />
+  <style>
+    :root {
+      --bg: #0f1419;
+      --fg: #e7ecf1;
+      --muted: #8b98a5;
+      --line: #243040;
+      --pass: #3dd68c;
+      --fail: #ff6b6b;
+      --card: #171e27;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+    }
+    main { max-width: 880px; margin: 0 auto; padding: 48px 24px 96px; }
+    h1 { font-size: 2.1rem; letter-spacing: -0.03em; margin: 0 0 8px; }
+    .sub { color: var(--muted); font-size: 1.15rem; margin-bottom: 32px; }
+    .proof {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: var(--card);
+      border: 1px solid var(--line);
+      padding: 20px 24px;
+      border-radius: 8px;
+      white-space: pre;
+      font-size: 0.92rem;
+    }
+    .pass { color: var(--pass); }
+    .fail { color: var(--fail); }
+    .tagline { margin-top: 16px; color: var(--muted); }
+    nav { display: flex; gap: 12px; flex-wrap: wrap; margin: 28px 0 40px; }
+    a.cta {
+      color: var(--bg);
+      background: var(--fg);
+      text-decoration: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    a.ghost {
+      color: var(--fg);
+      border: 1px solid var(--line);
+      background: transparent;
+      text-decoration: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+    h2 { font-size: 1.15rem; margin-top: 40px; }
+    p, li { color: #c5ced6; }
+    code { font-family: ui-monospace, Menlo, monospace; font-size: 0.9em; }
+    footer { margin-top: 64px; color: var(--muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Can this change be safely released?</h1>
+    <p class="sub">Release safety checks your code review doesn't cover.</p>
+    <div class="proof"><span class="pass">✓</span> Build
+<span class="pass">✓</span> Tests
+<span class="pass">✓</span> Code Review
+<span class="fail">✗</span> CoexistGate</div>
+    <p class="tagline">Your code passed. Your tests passed. Your rollback didn't.</p>
+    <nav>
+      <a class="cta" href="https://github.com/devcy0922/coexistgate-demo">View failing PR</a>
+      <a class="ghost" href="https://github.com/devcy0922/coexistgate">Install CoexistGate</a>
+      <a class="ghost" href="https://github.com/devcy0922/coexistgate/tree/main/deploy/aws">Deploy to AWS</a>
+    </nav>
+    <h2>What it is</h2>
+    <p>CoexistGate is a cross-artifact release safety engine. It links PostgreSQL migrations, TypeScript/JavaScript application references, Kubernetes/Compose facts, and <code>.coexistgate.yml</code> into a deterministic gate: can previous and candidate versions coexist, and can you roll back?</p>
+    <h2>What it is not</h2>
+    <p>Not an AI code reviewer, not Atlas, not Checkov, not a secret scanner. The gate never calls an LLM.</p>
+    <h2>Run</h2>
+    <p><code>coexistgate analyze .</code> locally, as a GitHub Actions check, or as a Lambda webhook in your AWS account. Repository contents do not go to a CoexistGate SaaS.</p>
+    <footer>Apache-2.0 · V0.1 · No signup, no file upload, no fake metrics.</footer>
+  </main>
+</body>
+</html>

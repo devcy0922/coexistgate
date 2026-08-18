@@ -1,0 +1,27 @@
+name: CoexistGate / Release Safety
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  release-safety:
+    name: CoexistGate / Release Safety
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: devcy0922/coexistgate
+          path: .coexistgate-src
+          ref: v0.1.0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Analyze
+        run: |
+          cargo run --quiet --manifest-path .coexistgate-src/Cargo.toml -p coexistgate-cli -- \
+            analyze . \
+            --base origin/${{ github.base_ref }} \
+            --fail-on high

@@ -1,0 +1,31 @@
+version: 1
+
+release:
+  strategy: rolling
+
+rollback:
+  required: true
+
+compatibility:
+  require_backward_compatible: true
+
+availability:
+  minimum_replicas: 2
+  deny_regression: false
+
+resources:
+  # Uncomment to enforce explicit floors (never guessed from metrics).
+  # minimum_memory: 256Mi
+  # minimum_cpu: 100m
+  deny_regression: false
+
+gate:
+  fail_on:
+    - critical
+    - high
+
+rules:
+  DB-BACKWARD-COMPAT-001: error
+  DB-ROLLBACK-COMPAT-001: error
+  CONFIG-ROLLBACK-COMPAT-001: error
+  DEPLOY-REPLICA-001: error
