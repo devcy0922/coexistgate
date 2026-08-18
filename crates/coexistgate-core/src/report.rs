@@ -65,10 +65,7 @@ fn count(findings: &[Finding], sev: Severity) -> usize {
 pub fn category_statuses(findings: &[Finding], fail_on: &[Severity]) -> CategoryBreakdown {
     fn status(findings: &[Finding], cat: Category, fail_on: &[Severity]) -> CategoryStatus {
         let in_cat: Vec<_> = findings.iter().filter(|f| f.category == cat).collect();
-        if in_cat
-            .iter()
-            .any(|f| fail_on.iter().any(|s| f.severity == *s))
-        {
+        if in_cat.iter().any(|f| f.severity.blocks_gate(fail_on)) {
             CategoryStatus::Fail
         } else if in_cat.iter().any(|f| f.severity >= Severity::Medium) {
             CategoryStatus::Warn

@@ -31,6 +31,11 @@ impl Severity {
             _ => None,
         }
     }
+
+    /// Lowest listed `fail_on` is the threshold; that severity **or worse** blocks.
+    pub fn blocks_gate(self, fail_on: &[Severity]) -> bool {
+        fail_on.iter().copied().min().is_some_and(|th| self >= th)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]

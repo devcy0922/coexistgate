@@ -45,7 +45,14 @@ Real scenario trees (run locally without GitHub):
 | [demo/scenarios/03-availability](demo/scenarios/03-availability) | FAIL |
 | [demo/scenarios/04-config-rollback](demo/scenarios/04-config-rollback) | FAIL |
 
-Public demo PRs (created at release time) are linked from the [project site](https://devcy0922.github.io/coexistgate/).
+Public demo PRs:
+
+| PR | Result |
+| --- | --- |
+| [\#1 Unsafe DB migration](https://github.com/devcy0922/coexistgate-demo/pull/1) | FAIL |
+| [\#2 Safe DB expand](https://github.com/devcy0922/coexistgate-demo/pull/2) | PASS |
+| [\#3 Availability regression](https://github.com/devcy0922/coexistgate-demo/pull/3) | FAIL |
+| [\#4 Config rollback break](https://github.com/devcy0922/coexistgate-demo/pull/4) | FAIL |
 
 ## What it catches
 
@@ -83,11 +90,11 @@ coexistgate analyze \
 
 | Code | Meaning |
 | --- | --- |
-| 0 | Analysis finished; gate **PASS** |
+| 0 | Analysis finished; gate **PASS** (no finding at or above `--fail-on` / policy `gate.fail_on`) |
 | 1 | Analysis finished; gate **FAIL** |
 | 2 | Usage / I/O / invalid policy |
 
-`--fail-on` overrides `gate.fail_on` in `.coexistgate.yml` for that run.
+`--fail-on high` fails the process on **high or worse** (including critical). It replaces `gate.fail_on` for that run.
 
 ## GitHub
 
