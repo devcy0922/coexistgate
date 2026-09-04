@@ -1,0 +1,43 @@
+name: Publish engineering blog
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/blog/**'
+      - '.github/workflows/publish-blog.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Sync blog post to devcy0922.github.io
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout CoexistGate
+        uses: actions/checkout@v4
+
+      - name: Checkout blog site
+        uses: actions/checkout@v4
+        with:
+          repository: devcy0922/devcy0922.github.io
+          token: ${{ secrets.BLOG_REPO_TOKEN }}
+          path: blog-site
+
+      - name: Sync posts
+        run: cp docs/blog/coexistgate-analyzer-coverage.md blog-site/docs/posts/coexistgate-analyzer-coverage.md
+
+      - name: Commit and push blog post
+        working-directory: blog-site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/posts/coexistgate-analyzer-coverage.md
+          if git diff --cached --quiet; then
+            echo "Blog post is already up to date."
+            exit 0
+          fi
+          git commit -m "Publish CoexistGate analyzer coverage post"
+          git push origin main
