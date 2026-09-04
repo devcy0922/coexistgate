@@ -2,7 +2,9 @@ use coexistgate_github::{
     create_check_run, fetch_tree, installation_token, parse_pull_request_event, verify_signature,
     GitHubConfig, WebhookError,
 };
-use lambda_http::{http::StatusCode, run, service_fn, Body, Error as LambdaError, Request, Response};
+use lambda_http::{
+    http::StatusCode, run, service_fn, Body, Error as LambdaError, Request, Response,
+};
 
 const MAX_BODY: usize = 1024 * 1024;
 

@@ -53,9 +53,7 @@ pub fn check_run_body(head_sha: &str, report: &Report) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use coexistgate_core::{
-        Category, Evidence, Finding, GateDecision, Impact, Severity,
-    };
+    use coexistgate_core::{Category, Evidence, Finding, GateDecision, Impact, Severity};
 
     #[test]
     fn failure_conclusion() {

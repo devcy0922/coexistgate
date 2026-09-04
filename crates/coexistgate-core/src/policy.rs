@@ -231,6 +231,9 @@ rules:
 "#;
         let p = Policy::from_yaml(yaml).unwrap();
         assert_eq!(p.minimum_replicas, Some(2));
-        assert_eq!(p.override_for("DEPLOY-REPLICA-001"), Some(OverrideLevel::Warning));
+        assert_eq!(
+            p.override_for("DEPLOY-REPLICA-001"),
+            Some(OverrideLevel::Warning)
+        );
     }
 }

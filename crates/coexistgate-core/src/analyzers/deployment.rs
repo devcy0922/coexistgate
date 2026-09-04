@@ -1,4 +1,4 @@
-use crate::analyzers::Analyzer;
+use crate::analyzers::{AnalysisIssue, AnalysisOutput, Analyzer};
 use crate::discovery::{files_of, looks_like_helm_template, ArtifactKind};
 use crate::fact::{EnvSource, Fact, LocatedFact, StrategyKind};
 use crate::tree::FileTree;
@@ -10,8 +10,9 @@ impl Analyzer for DeploymentAnalyzer {
         "deployment"
     }
 
-    fn analyze(&self, tree: &FileTree) -> Vec<LocatedFact> {
+    fn analyze(&self, tree: &FileTree) -> AnalysisOutput {
         let mut out = Vec::new();
+        let mut issues = Vec::new();
         for file in files_of(tree, ArtifactKind::Deployment) {
             if looks_like_helm_template(&file.content) {
                 continue;
@@ -23,13 +24,35 @@ impl Analyzer for DeploymentAnalyzer {
                 .unwrap_or(&file.path)
                 .to_ascii_lowercase();
             if name.contains("docker-compose") {
+                if let Err(error) = serde_yaml::from_str::<serde_yaml::Value>(&file.content) {
+                    issues.push(yaml_issue(&file.path, error.to_string()));
+                } else if !file.content.contains("services:") {
+                    issues.push(AnalysisIssue {
+                        path: file.path.clone(),
+                        line: 1,
+                        message: "Docker Compose file has no services map".to_string(),
+                    });
+                }
                 out.extend(parse_compose(&file.path, &file.content));
             } else {
+                for doc in split_yaml_docs(&file.content) {
+                    if let Err(error) = serde_yaml::from_str::<serde_yaml::Value>(doc.text) {
+                        issues.push(yaml_issue(&file.path, error.to_string()));
+                    }
+                }
                 out.extend(parse_k8s(&file.path, &file.content));
             }
         }
         out.sort_by(|a, b| (&a.path, a.line).cmp(&(&b.path, b.line)));
-        out
+        AnalysisOutput { facts: out, issues }
+    }
+}
+
+fn yaml_issue(path: &str, error: String) -> AnalysisIssue {
+    AnalysisIssue {
+        path: path.to_string(),
+        line: 1,
+        message: format!("malformed YAML: {error}"),
     }
 }
 
@@ -314,7 +337,7 @@ spec:
 "#,
         )
         .unwrap();
-        let facts = DeploymentAnalyzer.analyze(&t);
+        let facts = DeploymentAnalyzer.analyze(&t).facts;
         assert!(facts
             .iter()
             .any(|f| matches!(f.fact, Fact::ReplicaCount { count: 3 })));

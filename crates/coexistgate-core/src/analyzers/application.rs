@@ -1,7 +1,7 @@
 use regex::Regex;
 use std::sync::OnceLock;
 
-use crate::analyzers::Analyzer;
+use crate::analyzers::{AnalysisOutput, Analyzer};
 use crate::discovery::{files_of, ArtifactKind};
 use crate::fact::{Fact, LocatedFact};
 use crate::tree::FileTree;
@@ -13,7 +13,7 @@ impl Analyzer for ApplicationAnalyzer {
         "application"
     }
 
-    fn analyze(&self, tree: &FileTree) -> Vec<LocatedFact> {
+    fn analyze(&self, tree: &FileTree) -> AnalysisOutput {
         let mut out = Vec::new();
         for file in files_of(tree, ArtifactKind::Application) {
             out.extend(extract(&file.path, &file.content));
@@ -21,7 +21,10 @@ impl Analyzer for ApplicationAnalyzer {
         out.sort_by(|a, b| {
             (&a.path, a.line, fact_key(&a.fact)).cmp(&(&b.path, b.line, fact_key(&b.fact)))
         });
-        out
+        AnalysisOutput {
+            facts: out,
+            issues: Vec::new(),
+        }
     }
 }
 
@@ -102,7 +105,9 @@ fn strip_js_comments(src: &str) -> String {
 
 fn column_re() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b").unwrap())
+    RE.get_or_init(|| {
+        Regex::new(r"\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b").unwrap()
+    })
 }
 
 fn env_dot_re() -> &'static Regex {
@@ -127,22 +132,92 @@ fn sql_from_re() -> &'static Regex {
 }
 
 const JS_STOP: &[&str] = &[
-    "this", "console", "window", "document", "module", "exports", "require", "process", "Math",
-    "Object", "Array", "String", "Number", "Boolean", "JSON", "Error", "Promise", "Date", "Map",
-    "Set", "Buffer", "global", "globalThis", "import", "meta", "Deno", "props", "state", "ctx",
-    "req", "res", "app", "router", "schema", "prisma", "knex", "client", "db", "sql", "query",
-    "result", "row", "rows", "config", "env",
+    "this",
+    "console",
+    "window",
+    "document",
+    "module",
+    "exports",
+    "require",
+    "process",
+    "Math",
+    "Object",
+    "Array",
+    "String",
+    "Number",
+    "Boolean",
+    "JSON",
+    "Error",
+    "Promise",
+    "Date",
+    "Map",
+    "Set",
+    "Buffer",
+    "global",
+    "globalThis",
+    "import",
+    "meta",
+    "Deno",
+    "props",
+    "state",
+    "ctx",
+    "req",
+    "res",
+    "app",
+    "router",
+    "schema",
+    "prisma",
+    "knex",
+    "client",
+    "db",
+    "sql",
+    "query",
+    "result",
+    "row",
+    "rows",
+    "config",
+    "env",
 ];
 
 fn is_table_name(name: &str) -> bool {
     let l = name.to_ascii_lowercase();
     if matches!(
         l.as_str(),
-        "this" | "console" | "window" | "document" | "module" | "process" | "math" | "object"
-            | "array" | "string" | "number" | "json" | "error" | "promise" | "date" | "map"
-            | "set" | "buffer" | "global" | "import" | "meta" | "deno" | "props" | "state"
-            | "length" | "prototype" | "constructor" | "tostring" | "env" | "log"
-            | "info" | "warn" | "stdout" | "stderr" | "config"
+        "this"
+            | "console"
+            | "window"
+            | "document"
+            | "module"
+            | "process"
+            | "math"
+            | "object"
+            | "array"
+            | "string"
+            | "number"
+            | "json"
+            | "error"
+            | "promise"
+            | "date"
+            | "map"
+            | "set"
+            | "buffer"
+            | "global"
+            | "import"
+            | "meta"
+            | "deno"
+            | "props"
+            | "state"
+            | "length"
+            | "prototype"
+            | "constructor"
+            | "tostring"
+            | "env"
+            | "log"
+            | "info"
+            | "warn"
+            | "stdout"
+            | "stderr"
+            | "config"
     ) {
         return false;
     }
@@ -274,7 +349,7 @@ const url = process.env.REDIS_URL;
 "#,
         )
         .unwrap();
-        let facts = ApplicationAnalyzer.analyze(&t);
+        let facts = ApplicationAnalyzer.analyze(&t).facts;
         assert!(facts.iter().any(|f| matches!(
             &f.fact,
             Fact::ColumnReference { table, column } if table == "users" && column == "email"
@@ -287,8 +362,11 @@ const url = process.env.REDIS_URL;
     #[test]
     fn ignores_commented_refs() {
         let mut t = FileTree::new();
-        t.insert("src/a.ts", "// users.email\nconst x = 1;\n").unwrap();
-        let facts = ApplicationAnalyzer.analyze(&t);
-        assert!(facts.iter().all(|f| !matches!(f.fact, Fact::ColumnReference { .. })));
+        t.insert("src/a.ts", "// users.email\nconst x = 1;\n")
+            .unwrap();
+        let facts = ApplicationAnalyzer.analyze(&t).facts;
+        assert!(facts
+            .iter()
+            .all(|f| !matches!(f.fact, Fact::ColumnReference { .. })));
     }
 }

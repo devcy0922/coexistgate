@@ -6,9 +6,22 @@ mod migration;
 use crate::fact::LocatedFact;
 use crate::tree::FileTree;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AnalysisIssue {
+    pub path: String,
+    pub line: u32,
+    pub message: String,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AnalysisOutput {
+    pub facts: Vec<LocatedFact>,
+    pub issues: Vec<AnalysisIssue>,
+}
+
 pub trait Analyzer: Send + Sync {
     fn id(&self) -> &'static str;
-    fn analyze(&self, tree: &FileTree) -> Vec<LocatedFact>;
+    fn analyze(&self, tree: &FileTree) -> AnalysisOutput;
 }
 
 pub fn builtin_analyzers() -> Vec<Box<dyn Analyzer>> {
@@ -19,4 +32,3 @@ pub fn builtin_analyzers() -> Vec<Box<dyn Analyzer>> {
         Box::new(configuration::ConfigurationAnalyzer),
     ]
 }
-

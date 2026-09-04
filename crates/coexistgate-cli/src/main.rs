@@ -119,10 +119,7 @@ fn run() -> Result<ExitCode> {
             let rules = rule_catalog();
             match format {
                 OutputFormat::Human => {
-                    println!(
-                        "{:<28} {:<8} {:<16} {}",
-                        "ID", "SEV", "CATEGORY", "CROSS"
-                    );
+                    println!("{:<28} {:<8} {:<16} CROSS", "ID", "SEV", "CATEGORY");
                     for r in rules {
                         println!(
                             "{:<28} {:<8} {:<16} {:<5} {}",
@@ -223,7 +220,12 @@ fn load_git_or_dir(
 
 fn is_git_repo(path: &Path) -> bool {
     Command::new("git")
-        .args(["-C", &path.to_string_lossy(), "rev-parse", "--is-inside-work-tree"])
+        .args([
+            "-C",
+            &path.to_string_lossy(),
+            "rev-parse",
+            "--is-inside-work-tree",
+        ])
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
@@ -240,7 +242,13 @@ fn default_base(path: &Path) -> Option<String> {
 
 fn ref_exists(path: &Path, git_ref: &str) -> bool {
     Command::new("git")
-        .args(["-C", &path.to_string_lossy(), "rev-parse", "--verify", git_ref])
+        .args([
+            "-C",
+            &path.to_string_lossy(),
+            "rev-parse",
+            "--verify",
+            git_ref,
+        ])
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
@@ -271,7 +279,12 @@ fn load_git_tree(path: &Path, git_ref: &str) -> Result<FileTree> {
             continue;
         }
         let show = Command::new("git")
-            .args(["-C", &path.to_string_lossy(), "show", &format!("{git_ref}:{rel}")])
+            .args([
+                "-C",
+                &path.to_string_lossy(),
+                "show",
+                &format!("{git_ref}:{rel}"),
+            ])
             .output()
             .with_context(|| format!("git show {git_ref}:{rel}"))?;
         if !show.status.success() {

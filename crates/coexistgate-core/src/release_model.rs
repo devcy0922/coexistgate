@@ -169,7 +169,11 @@ impl ReleaseModel {
             .schema()
             .into_iter()
             .filter(|c| {
-                !self.previous.schema().iter().any(|p| schema_eq(&p.fact, &c.fact) && p.path == c.path)
+                !self
+                    .previous
+                    .schema()
+                    .iter()
+                    .any(|p| schema_eq(&p.fact, &c.fact) && p.path == c.path)
                     && !self
                         .previous
                         .schema()
@@ -205,14 +209,13 @@ fn schema_eq(a: &Fact, b: &Fact) -> bool {
 }
 
 fn collapse(s: &str) -> String {
-    s.split_whitespace().collect::<Vec<_>>().join(" ").to_ascii_lowercase()
+    s.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase()
 }
 
-pub fn schema_targets_ref(
-    change: &Fact,
-    table: &str,
-    column: Option<&str>,
-) -> bool {
+pub fn schema_targets_ref(change: &Fact, table: &str, column: Option<&str>) -> bool {
     match change {
         Fact::SchemaChange {
             table: t,

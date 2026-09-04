@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use crate::analyzers::Analyzer;
+use crate::analyzers::{AnalysisIssue, AnalysisOutput, Analyzer};
 use crate::discovery::{files_of, ArtifactKind};
 use crate::fact::{Fact, LocatedFact, SchemaOp};
 use crate::tree::FileTree;
@@ -12,18 +12,22 @@ impl Analyzer for MigrationAnalyzer {
         "migration"
     }
 
-    fn analyze(&self, tree: &FileTree) -> Vec<LocatedFact> {
+    fn analyze(&self, tree: &FileTree) -> AnalysisOutput {
         let mut out = Vec::new();
+        let mut issues = Vec::new();
         for file in files_of(tree, ArtifactKind::Migration) {
-            out.extend(extract_sql(&file.path, &file.content));
+            let (facts, file_issues) = extract_sql(&file.path, &file.content);
+            out.extend(facts);
+            issues.extend(file_issues);
         }
         out.sort_by(|a, b| (&a.path, a.line).cmp(&(&b.path, b.line)));
-        out
+        AnalysisOutput { facts: out, issues }
     }
 }
 
-fn extract_sql(path: &str, content: &str) -> Vec<LocatedFact> {
+fn extract_sql(path: &str, content: &str) -> (Vec<LocatedFact>, Vec<AnalysisIssue>) {
     let mut facts = Vec::new();
+    let mut issues = Vec::new();
     for stmt in split_statements(content) {
         if let Some(fact) = parse_statement(&stmt.text) {
             facts.push(LocatedFact {
@@ -31,9 +35,35 @@ fn extract_sql(path: &str, content: &str) -> Vec<LocatedFact> {
                 line: stmt.line,
                 fact,
             });
+        } else if is_schema_statement(&stmt.text) && !is_known_safe_statement(&stmt.text) {
+            issues.push(AnalysisIssue {
+                path: path.to_string(),
+                line: stmt.line,
+                message: "unsupported or ambiguous PostgreSQL DDL statement".to_string(),
+            });
         }
     }
-    facts
+    (facts, issues)
+}
+
+fn is_schema_statement(sql: &str) -> bool {
+    let keyword = sql
+        .split_whitespace()
+        .next()
+        .unwrap_or("")
+        .to_ascii_uppercase();
+    // CREATE TABLE is commonly present in the baseline and is not a change
+    // between releases. Changes that can alter an existing contract must be
+    // understood or fail closed.
+    matches!(keyword.as_str(), "ALTER" | "DROP" | "TRUNCATE")
+}
+
+fn is_known_safe_statement(sql: &str) -> bool {
+    // ADD COLUMN without a NOT NULL constraint is an expand step. It is
+    // intentionally not emitted as a breaking fact, but it is understood.
+    Regex::new(r"(?i)^ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?[A-Za-z0-9_.]+\s+ADD\s+COLUMN\b")
+        .map(|re| re.is_match(&collapse_ws(sql)))
+        .unwrap_or(false)
 }
 
 struct Stmt {
@@ -295,9 +325,9 @@ mod tests {
             "ALTER TABLE users RENAME COLUMN email TO email_address;\n",
         )
         .unwrap();
-        let facts = MigrationAnalyzer.analyze(&t);
-        assert_eq!(facts.len(), 1);
-        match &facts[0].fact {
+        let output = MigrationAnalyzer.analyze(&t);
+        assert_eq!(output.facts.len(), 1);
+        match &output.facts[0].fact {
             Fact::SchemaChange {
                 table,
                 operation,
@@ -322,6 +352,19 @@ mod tests {
             "-- ALTER TABLE users DROP COLUMN email;\nSELECT 1;\n",
         )
         .unwrap();
-        assert!(MigrationAnalyzer.analyze(&t).is_empty());
+        assert!(MigrationAnalyzer.analyze(&t).facts.is_empty());
+    }
+
+    #[test]
+    fn reports_unsupported_schema_syntax() {
+        let mut t = FileTree::new();
+        t.insert(
+            "migrations/003.sql",
+            "ALTER TABLE users ENABLE ROW LEVEL SECURITY;",
+        )
+        .unwrap();
+        let output = MigrationAnalyzer.analyze(&t);
+        assert_eq!(output.facts.len(), 0);
+        assert_eq!(output.issues.len(), 1);
     }
 }

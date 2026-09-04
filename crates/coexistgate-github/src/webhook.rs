@@ -60,7 +60,10 @@ struct Installation {
 
 const HANDLE: &[&str] = &["opened", "synchronize", "reopened", "ready_for_review"];
 
-pub fn parse_pull_request_event(event_name: &str, body: &[u8]) -> Result<PullRequestAnalysis, WebhookError> {
+pub fn parse_pull_request_event(
+    event_name: &str,
+    body: &[u8],
+) -> Result<PullRequestAnalysis, WebhookError> {
     if event_name != "pull_request" {
         return Err(WebhookError::NotPullRequest);
     }
@@ -69,7 +72,9 @@ pub fn parse_pull_request_event(event_name: &str, body: &[u8]) -> Result<PullReq
     if !HANDLE.contains(&action.as_str()) {
         return Err(WebhookError::IgnoredAction(action));
     }
-    let pr = ev.pull_request.ok_or(WebhookError::Missing("pull_request"))?;
+    let pr = ev
+        .pull_request
+        .ok_or(WebhookError::Missing("pull_request"))?;
     let repo = ev.repository.ok_or(WebhookError::Missing("repository"))?;
     Ok(PullRequestAnalysis {
         owner: repo

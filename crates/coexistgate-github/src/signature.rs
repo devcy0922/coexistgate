@@ -35,8 +35,16 @@ mod tests {
     #[test]
     fn github_style_hmac() {
         let sig = signature_header(b"secret", b"{\"action\":\"opened\"}");
-        assert!(verify_signature(b"secret", b"{\"action\":\"opened\"}", &sig));
-        assert!(!verify_signature(b"secret", b"{\"action\":\"opened\"}", "sha256=deadbeef"));
+        assert!(verify_signature(
+            b"secret",
+            b"{\"action\":\"opened\"}",
+            &sig
+        ));
+        assert!(!verify_signature(
+            b"secret",
+            b"{\"action\":\"opened\"}",
+            "sha256=deadbeef"
+        ));
         assert!(!verify_signature(b"nope", b"{\"action\":\"opened\"}", &sig));
     }
 }

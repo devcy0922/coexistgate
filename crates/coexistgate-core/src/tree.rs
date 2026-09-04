@@ -20,7 +20,11 @@ impl FileTree {
         Self::default()
     }
 
-    pub fn insert(&mut self, path: impl Into<String>, content: impl Into<String>) -> crate::Result<()> {
+    pub fn insert(
+        &mut self,
+        path: impl Into<String>,
+        content: impl Into<String>,
+    ) -> crate::Result<()> {
         let path = normalize_path(&path.into())?;
         self.files.insert(
             path.clone(),
