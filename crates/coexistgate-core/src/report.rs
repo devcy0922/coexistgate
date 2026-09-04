@@ -9,9 +9,10 @@ pub enum GateDecision {
     Fail,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum CategoryStatus {
+    #[default]
     Pass,
     Fail,
     Warn,
@@ -39,12 +40,6 @@ pub struct CategoryBreakdown {
     pub high: usize,
     pub medium: usize,
     pub low: usize,
-}
-
-impl Default for CategoryStatus {
-    fn default() -> Self {
-        CategoryStatus::Pass
-    }
 }
 
 impl Report {

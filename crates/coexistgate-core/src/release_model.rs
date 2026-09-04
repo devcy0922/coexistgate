@@ -218,7 +218,6 @@ pub fn schema_targets_ref(
             table: t,
             operation,
             from,
-            to: _,
             ..
         } => {
             if t != table && from.as_deref() != Some(table) {

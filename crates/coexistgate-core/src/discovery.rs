@@ -65,7 +65,7 @@ fn ext(path: &str) -> String {
         .to_string()
 }
 
-pub fn files_of<'a>(tree: &'a FileTree, kind: ArtifactKind) -> Vec<&'a SourceFile> {
+pub fn files_of(tree: &FileTree, kind: ArtifactKind) -> Vec<&SourceFile> {
     tree.iter()
         .filter(|f| !is_skipped_path(&f.path) && classify(&f.path) == kind)
         .collect()

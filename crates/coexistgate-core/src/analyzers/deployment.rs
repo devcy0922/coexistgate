@@ -50,7 +50,7 @@ fn parse_k8s(path: &str, content: &str) -> Vec<LocatedFact> {
             continue;
         }
         let spec = map.get(serde_yaml::Value::String("spec".into()));
-        if let Some(replicas) = spec.and_then(|s| s.get("replicas")).and_then(|v| as_u32(v)) {
+        if let Some(replicas) = spec.and_then(|s| s.get("replicas")).and_then(as_u32) {
             facts.push(LocatedFact {
                 path: path.to_string(),
                 line: line_of(doc.text, "replicas:"),
@@ -92,8 +92,8 @@ fn parse_k8s(path: &str, content: &str) -> Vec<LocatedFact> {
         {
             for c in containers {
                 if let Some(limits) = c.get("resources").and_then(|r| r.get("limits")) {
-                    let cpu = limits.get("cpu").and_then(|v| as_string(v));
-                    let memory = limits.get("memory").and_then(|v| as_string(v));
+                    let cpu = limits.get("cpu").and_then(as_string);
+                    let memory = limits.get("memory").and_then(as_string);
                     if cpu.is_some() || memory.is_some() {
                         facts.push(LocatedFact {
                             path: path.to_string(),
