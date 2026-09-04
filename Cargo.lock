@@ -264,7 +264,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "coexistgate-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -274,7 +274,7 @@ dependencies = [
 
 [[package]]
 name = "coexistgate-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "regex",
  "serde",
@@ -286,7 +286,7 @@ dependencies = [
 
 [[package]]
 name = "coexistgate-github"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "coexistgate-core",
@@ -304,7 +304,7 @@ dependencies = [
 
 [[package]]
 name = "coexistgate-lambda"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "coexistgate-core",
  "coexistgate-github",

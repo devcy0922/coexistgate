@@ -269,7 +269,7 @@ fn schema_label(f: &LocatedFact) -> String {
     }
 }
 
-fn breaking_schema<'a>(model: &'a ReleaseModel) -> Vec<&'a LocatedFact> {
+fn breaking_schema(model: &ReleaseModel) -> Vec<&LocatedFact> {
     model
         .new_schema_changes()
         .into_iter()
