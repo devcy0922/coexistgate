@@ -100,6 +100,8 @@ coexistgate analyze \
 
 Add the workflow in [`examples/github-action.yml`](examples/github-action.yml). The job appears as **CoexistGate / Release Safety**.
 
+Engineering notes are published to [devcy0922.github.io](https://devcy0922.github.io/) automatically when a post under `docs/blog/` reaches `main`. The cross-repository workflow requires a `BLOG_REPO_TOKEN` secret with write access to `devcy0922/devcy0922.github.io`.
+
 Self-host the same engine on a GitHub App webhook: [`deploy/aws`](deploy/aws).
 
 ## AWS self-host
