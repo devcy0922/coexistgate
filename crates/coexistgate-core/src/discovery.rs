@@ -83,10 +83,7 @@ mod tests {
     fn classifies_common_paths() {
         assert_eq!(classify("migrations/001.sql"), ArtifactKind::Migration);
         assert_eq!(classify("src/user.ts"), ArtifactKind::Application);
-        assert_eq!(
-            classify("deploy/deployment.yaml"),
-            ArtifactKind::Deployment
-        );
+        assert_eq!(classify("deploy/deployment.yaml"), ArtifactKind::Deployment);
         assert_eq!(classify(".env.example"), ArtifactKind::Configuration);
         assert_eq!(classify(".coexistgate.yml"), ArtifactKind::Policy);
     }

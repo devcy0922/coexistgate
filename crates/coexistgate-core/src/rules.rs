@@ -21,6 +21,14 @@ pub fn rule_catalog() -> Vec<RuleMeta> {
 fn catalog() -> &'static [RuleMeta] {
     &[
         RuleMeta {
+            id: "ANALYZER-COVERAGE-001",
+            title: "Analyzer could not establish complete release evidence",
+            category: Category::Compatibility,
+            default_severity: Severity::High,
+            cross_artifact: true,
+            explanation: "A supported artifact contains malformed, ambiguous, or unsupported change syntax. The gate fails closed because an empty fact set cannot prove release safety.",
+        },
+        RuleMeta {
             id: "DB-BACKWARD-COMPAT-001",
             title: "Schema change breaks previous release during rolling coexistence",
             category: Category::Compatibility,
@@ -231,8 +239,12 @@ fn policy_ev(model: &ReleaseModel, text: impl Into<String>) -> Evidence {
 fn strategy_evidence(model: &ReleaseModel) -> Evidence {
     if let Some(f) = model.candidate.strategy_fact() {
         let kind = match f.fact {
-            Fact::DeploymentStrategy { kind: StrategyKind::Rolling } => "RollingUpdate",
-            Fact::DeploymentStrategy { kind: StrategyKind::Recreate } => "Recreate",
+            Fact::DeploymentStrategy {
+                kind: StrategyKind::Rolling,
+            } => "RollingUpdate",
+            Fact::DeploymentStrategy {
+                kind: StrategyKind::Recreate,
+            } => "Recreate",
             _ => "strategy",
         };
         return ev(f, format!("Deployment strategy {kind}"));
@@ -298,7 +310,10 @@ fn prev_refs_for<'a>(model: &'a ReleaseModel, change: &'a LocatedFact) -> Vec<&'
             .filter(|(_, t)| *t == table.as_str())
             .map(|(f, _)| f)
             .collect(),
-        SchemaOp::DropColumn | SchemaOp::RenameColumn | SchemaOp::TypeChange | SchemaOp::SetNotNull => {
+        SchemaOp::DropColumn
+        | SchemaOp::RenameColumn
+        | SchemaOp::TypeChange
+        | SchemaOp::SetNotNull => {
             let col = from.as_deref().unwrap_or("");
             model
                 .previous
@@ -426,7 +441,9 @@ fn db_rollback(model: &ReleaseModel) -> Vec<Finding> {
                 Fact::ColumnReference { table, column } => {
                     format!("Previous release references {table}.{column}")
                 }
-                Fact::TableReference { table } => format!("Previous release references table {table}"),
+                Fact::TableReference { table } => {
+                    format!("Previous release references table {table}")
+                }
                 _ => "Previous application reference".into(),
             },
         ));
@@ -470,7 +487,10 @@ fn db_notnull(model: &ReleaseModel) -> Vec<Finding> {
                 from.as_deref().unwrap_or("?")
             ),
         )];
-        evidence.push(ev(refs[0], "Previous application still uses this column/table"));
+        evidence.push(ev(
+            refs[0],
+            "Previous application still uses this column/table",
+        ));
         if is_rolling(model) {
             evidence.push(strategy_evidence(model));
         }
@@ -516,7 +536,10 @@ fn db_add_notnull(model: &ReleaseModel) -> Vec<Finding> {
                         to.as_deref().unwrap_or("?")
                     ),
                 ),
-                ev(refs[0], format!("Previous application references table {table}")),
+                ev(
+                    refs[0],
+                    format!("Previous application references table {table}"),
+                ),
             ],
             "Previous inserts that omit the new column will fail.",
             Impact::Unsafe,
@@ -567,7 +590,10 @@ fn db_candidate_app(model: &ReleaseModel) -> Vec<Finding> {
             "DB-CANDIDATE-APP-001",
             vec![
                 ev(change, schema_label(change)),
-                ev(refs[0], "Candidate application still references the old object"),
+                ev(
+                    refs[0],
+                    "Candidate application still references the old object",
+                ),
             ],
             "Head application is inconsistent with the candidate schema.",
             Impact::Unsafe,
@@ -610,7 +636,10 @@ fn db_expand_hint(model: &ReleaseModel) -> Vec<Finding> {
         }
         out.push(finding(
             "DB-EXPAND-CONTRACT-HINT-001",
-            vec![ev(change, schema_label(change)), ev(refs[0], "Previous app uses old column")],
+            vec![
+                ev(change, schema_label(change)),
+                ev(refs[0], "Previous app uses old column"),
+            ],
             "Single-step rename is not expand/contract.",
             Impact::Unsafe,
             Impact::Unsafe,
@@ -644,9 +673,12 @@ fn config_rollback(model: &ReleaseModel) -> Vec<Finding> {
             continue;
         }
         // Need evidence that candidate actually has a config/deploy contract (not empty repo).
-        let Some(contract_loc) = model.candidate.facts.iter().find(|f| {
-            matches!(f.fact, Fact::EnvDefinition { .. })
-        }) else {
+        let Some(contract_loc) = model
+            .candidate
+            .facts
+            .iter()
+            .find(|f| matches!(f.fact, Fact::EnvDefinition { .. }))
+        else {
             continue;
         };
         out.push(finding(
@@ -729,7 +761,10 @@ fn config_shared_rolling(model: &ReleaseModel) -> Vec<Finding> {
             };
             let mut evidence = vec![
                 ev(loc, format!("Previous application requires {key}")),
-                ev(dot, format!("Candidate shared dotenv keys: {}", cand_dot.join(", "))),
+                ev(
+                    dot,
+                    format!("Candidate shared dotenv keys: {}", cand_dot.join(", ")),
+                ),
                 strategy_evidence(model),
             ];
             let _ = &mut evidence;
@@ -830,7 +865,11 @@ fn deploy_mem(model: &ReleaseModel) -> Vec<Finding> {
     let Some(loc) = model.candidate.resource() else {
         return Vec::new();
     };
-    let Fact::ResourceLimit { memory: Some(ref mem), .. } = loc.fact else {
+    let Fact::ResourceLimit {
+        memory: Some(ref mem),
+        ..
+    } = loc.fact
+    else {
         return Vec::new();
     };
     let Some(got) = memory_bytes(mem) else {
@@ -862,7 +901,10 @@ fn deploy_cpu(model: &ReleaseModel) -> Vec<Finding> {
     let Some(loc) = model.candidate.resource() else {
         return Vec::new();
     };
-    let Fact::ResourceLimit { cpu: Some(ref cpu), .. } = loc.fact else {
+    let Fact::ResourceLimit {
+        cpu: Some(ref cpu), ..
+    } = loc.fact
+    else {
         return Vec::new();
     };
     let Some(got) = cpu_millis(cpu) else {
@@ -894,23 +936,32 @@ fn deploy_resource_regression(model: &ReleaseModel) -> Vec<Finding> {
     let Some(cand) = model.candidate.resource() else {
         return Vec::new();
     };
-    let (Fact::ResourceLimit {
-        cpu: ref pcpu,
-        memory: ref pmem,
-    }, Fact::ResourceLimit {
-        cpu: ref ccpu,
-        memory: ref cmem,
-    }) = (&prev.fact, &cand.fact)
+    let (
+        Fact::ResourceLimit {
+            cpu: ref pcpu,
+            memory: ref pmem,
+        },
+        Fact::ResourceLimit {
+            cpu: ref ccpu,
+            memory: ref cmem,
+        },
+    ) = (&prev.fact, &cand.fact)
     else {
         return Vec::new();
     };
     let mut dropped = false;
-    if let (Some(p), Some(c)) = (pmem.as_deref().and_then(memory_bytes), cmem.as_deref().and_then(memory_bytes)) {
+    if let (Some(p), Some(c)) = (
+        pmem.as_deref().and_then(memory_bytes),
+        cmem.as_deref().and_then(memory_bytes),
+    ) {
         if c < p {
             dropped = true;
         }
     }
-    if let (Some(p), Some(c)) = (pcpu.as_deref().and_then(cpu_millis), ccpu.as_deref().and_then(cpu_millis)) {
+    if let (Some(p), Some(c)) = (
+        pcpu.as_deref().and_then(cpu_millis),
+        ccpu.as_deref().and_then(cpu_millis),
+    ) {
         if c < p {
             dropped = true;
         }
@@ -921,8 +972,14 @@ fn deploy_resource_regression(model: &ReleaseModel) -> Vec<Finding> {
     vec![finding(
         "DEPLOY-RESOURCE-REGRESSION-001",
         vec![
-            ev(prev, format!("Previous limits cpu={pcpu:?} memory={pmem:?}")),
-            ev(cand, format!("Candidate limits cpu={ccpu:?} memory={cmem:?}")),
+            ev(
+                prev,
+                format!("Previous limits cpu={pcpu:?} memory={pmem:?}"),
+            ),
+            ev(
+                cand,
+                format!("Candidate limits cpu={ccpu:?} memory={cmem:?}"),
+            ),
             policy_ev(model, "resources.deny_regression: true"),
         ],
         "Candidate compute limits are lower than the previous manifest.",
@@ -1013,8 +1070,14 @@ fn deploy_max_unavail(model: &ReleaseModel) -> Vec<Finding> {
 
 pub fn memory_bytes(s: &str) -> Option<u64> {
     let s = s.trim();
-    let digits: String = s.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
-    let unit: String = s.chars().skip_while(|c| c.is_ascii_digit() || *c == '.').collect();
+    let digits: String = s
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
+    let unit: String = s
+        .chars()
+        .skip_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
     let n: f64 = digits.parse().ok()?;
     let mul = match unit.trim().to_ascii_lowercase().as_str() {
         "" | "b" => 1.0,

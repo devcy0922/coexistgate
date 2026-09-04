@@ -1,4 +1,4 @@
-use crate::analyzers::{builtin_analyzers, Analyzer};
+use crate::analyzers::{builtin_analyzers, AnalysisIssue, Analyzer};
 use crate::discovery::classify;
 use crate::fact::LocatedFact;
 use crate::finding::Severity;
@@ -26,7 +26,10 @@ pub fn analyze_with_analyzers(
     analyzers: &[Box<dyn Analyzer>],
 ) -> crate::Result<Report> {
     let (policy, policy_path) = match request.policy {
-        Some(p) => (p, find_policy_path(&request.candidate).or_else(|| find_policy_path(&request.previous))),
+        Some(p) => (
+            p,
+            find_policy_path(&request.candidate).or_else(|| find_policy_path(&request.previous)),
+        ),
         None => load_policy(&request.candidate, &request.previous)?,
     };
     let mut policy = policy;
@@ -38,10 +41,25 @@ pub fn analyze_with_analyzers(
     let mut analyzer_ms = Vec::new();
     let mut previous_facts = Vec::new();
     let mut candidate_facts = Vec::new();
+    let mut analysis_issues = Vec::new();
     for a in analyzers {
         let start = std::time::Instant::now();
-        previous_facts.extend(a.analyze(&request.previous));
-        candidate_facts.extend(a.analyze(&request.candidate));
+        let previous = a.analyze(&request.previous);
+        let candidate = a.analyze(&request.candidate);
+        previous_facts.extend(previous.facts);
+        candidate_facts.extend(candidate.facts);
+        analysis_issues.extend(
+            previous
+                .issues
+                .into_iter()
+                .map(|issue| (a.id(), false, issue)),
+        );
+        analysis_issues.extend(
+            candidate
+                .issues
+                .into_iter()
+                .map(|issue| (a.id(), true, issue)),
+        );
         analyzer_ms.push((a.id().to_string(), start.elapsed().as_millis() as u64));
         tracing::info!(
             analyzer = a.id(),
@@ -63,7 +81,9 @@ pub fn analyze_with_analyzers(
         policy_path,
     };
 
-    let findings = rules::apply_policy(rules::evaluate(&model), &policy);
+    let mut findings = rules::apply_policy(rules::evaluate(&model), &policy);
+    findings.extend(analysis_issue_findings(&analysis_issues));
+    findings.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
     let gate = gate_decision(&findings, &policy.fail_on);
     let _elapsed = t0.elapsed();
 
@@ -77,11 +97,44 @@ pub fn analyze_with_analyzers(
     })
 }
 
+fn analysis_issue_findings(issues: &[(&str, bool, AnalysisIssue)]) -> Vec<crate::Finding> {
+    issues
+        .iter()
+        .map(|(analyzer, candidate, issue)| crate::Finding {
+            rule_id: "ANALYZER-COVERAGE-001".to_string(),
+            severity: Severity::High,
+            category: crate::finding::Category::Compatibility,
+            title: "Release evidence is incomplete".to_string(),
+            evidence: vec![crate::finding::Evidence {
+                artifact: issue.path.clone(),
+                line: issue.line,
+                fact: format!(
+                    "{} release: {} analyzer could not safely interpret {}",
+                    if *candidate { "candidate" } else { "previous" },
+                    analyzer,
+                    issue.message
+                ),
+            }],
+            impact: "The gate cannot prove that this release is safe from the available evidence."
+                .to_string(),
+            release_impact: crate::finding::Impact::Review,
+            rollback_impact: crate::finding::Impact::Review,
+            recommendation: Some(
+                "Fix the artifact or use a supported syntax before relying on a PASS result."
+                    .to_string(),
+            ),
+        })
+        .collect()
+}
+
 fn fact_ord(a: &LocatedFact, b: &LocatedFact) -> std::cmp::Ordering {
     (&a.path, a.line, format!("{:?}", a.fact)).cmp(&(&b.path, b.line, format!("{:?}", b.fact)))
 }
 
-fn load_policy(candidate: &FileTree, previous: &FileTree) -> crate::Result<(Policy, Option<String>)> {
+fn load_policy(
+    candidate: &FileTree,
+    previous: &FileTree,
+) -> crate::Result<(Policy, Option<String>)> {
     if let Some(path) = find_policy_path(candidate) {
         let text = &candidate.get(&path).unwrap().content;
         return Ok((Policy::from_yaml(text)?, Some(path)));
@@ -324,13 +377,19 @@ gate:
     fn deterministic() {
         let previous = tree(&[
             ("src/a.ts", "const x = users.email;\n"),
-            ("deploy/deployment.yaml", "kind: Deployment\nspec:\n  replicas: 3\n  strategy:\n    type: RollingUpdate\n"),
+            (
+                "deploy/deployment.yaml",
+                "kind: Deployment\nspec:\n  replicas: 3\n  strategy:\n    type: RollingUpdate\n",
+            ),
             (".coexistgate.yml", POLICY),
         ]);
         let candidate = tree(&[
             ("src/a.ts", "const x = users.email_address;\n"),
             ("migrations/1.sql", "ALTER TABLE users DROP COLUMN email;\n"),
-            ("deploy/deployment.yaml", "kind: Deployment\nspec:\n  replicas: 3\n  strategy:\n    type: RollingUpdate\n"),
+            (
+                "deploy/deployment.yaml",
+                "kind: Deployment\nspec:\n  replicas: 3\n  strategy:\n    type: RollingUpdate\n",
+            ),
             (".coexistgate.yml", POLICY),
         ]);
         let req = AnalysisRequest {
@@ -341,5 +400,25 @@ gate:
         let a = serde_json::to_string(&analyze(req.clone()).unwrap()).unwrap();
         let b = serde_json::to_string(&analyze(req).unwrap()).unwrap();
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn unsupported_schema_change_fails_closed() {
+        let previous = tree(&[("deploy/deployment.yaml", "kind: Deployment\nspec: {}\n")]);
+        let candidate = tree(&[(
+            "migrations/003.sql",
+            "ALTER TABLE users ENABLE ROW LEVEL SECURITY;\n",
+        )]);
+        let report = analyze(AnalysisRequest {
+            previous,
+            candidate,
+            ..Default::default()
+        })
+        .unwrap();
+        assert_eq!(report.gate, GateDecision::Fail);
+        assert!(report
+            .findings
+            .iter()
+            .any(|f| f.rule_id == "ANALYZER-COVERAGE-001" && !f.evidence.is_empty()));
     }
 }

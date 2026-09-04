@@ -86,7 +86,8 @@ pub fn tree_from_zip(bytes: &[u8], limits: ZipLimits) -> Result<FileTree, Error>
         file.read_to_end(&mut buf)
             .map_err(|e| Error::Zip(e.to_string()))?;
         if let Ok(text) = String::from_utf8(buf) {
-            tree.insert(rel, text).map_err(|e| Error::Zip(e.to_string()))?;
+            tree.insert(rel, text)
+                .map_err(|e| Error::Zip(e.to_string()))?;
         }
     }
     Ok(tree)
