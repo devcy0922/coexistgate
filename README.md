@@ -100,6 +100,8 @@ coexistgate analyze \
 
 Add the workflow in [`examples/github-action.yml`](examples/github-action.yml). The job appears as **CoexistGate / Release Safety**.
 
+Engineering notes are published to [devcy0922.github.io](https://devcy0922.github.io/) automatically when a post under `docs/blog/` reaches `main`. The cross-repository workflow requires a `BLOG_REPO_TOKEN` secret with write access to `devcy0922/devcy0922.github.io`.
+
 Self-host the same engine on a GitHub App webhook: [`deploy/aws`](deploy/aws).
 
 ## AWS self-host
@@ -122,11 +124,22 @@ Copilot comments on a diff. Atlas lints a migration in isolation. Checkov lints 
 
 ## Architecture
 
-```text
-Event  →  Adapter  →  AnalysisRequest  →  Core  →  Report
-                         ↑
-              Analyzers emit Facts only
+```mermaid
+flowchart LR
+  E[Event / CLI] --> A[Adapter]
+  A --> T[Base + Candidate FileTree]
+  T --> D[Discovery]
+  D --> X[Analyzers]
+  X --> F[Facts]
+  X --> U[Analysis issues]
+  F --> M[ReleaseModel]
+  M --> R[Cross-artifact rules]
+  R --> G[Gate]
+  U --> G
+  G --> O[Report with evidence]
 ```
+
+파서가 이해하지 못한 변경을 빈 결과로 처리하지 않습니다. 미지원·손상·부분 입력은 `ANALYZER-COVERAGE-001`로 보고되어 안전을 증명할 수 없는 릴리스를 차단합니다. 자세한 계약은 [`docs/architecture.md`](docs/architecture.md)를 참고하세요.
 
 - **Core** (`coexistgate-core`): discovery, facts, release model, rules, gate
 - **CLI** (`coexistgate`): local / CI

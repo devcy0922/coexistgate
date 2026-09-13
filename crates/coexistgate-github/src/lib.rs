@@ -62,10 +62,7 @@ pub struct AdapterOutcome {
 }
 
 /// Verify webhook, fetch base/head trees, run core, return report (caller posts the Check).
-pub fn analyze_pull_request_trees(
-    previous: FileTree,
-    candidate: FileTree,
-) -> Result<Report> {
+pub fn analyze_pull_request_trees(previous: FileTree, candidate: FileTree) -> Result<Report> {
     Ok(analyze(AnalysisRequest {
         previous,
         candidate,
